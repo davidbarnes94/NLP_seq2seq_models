@@ -49,10 +49,6 @@ def prepare_question(seq, to_ix):
     tensor = torch.LongTensor(idxs)
     return autograd.Variable(tensor)
 
-
-#print(prepare_question(trainingData[0][0].split(), word_to_ix))
-#print(createTagDictionary(trainingData))
-
 class LSTMmath(nn.Module):
 
     def __init__(self, embedding_dim, hidden_dim, vocab_size, tagset_size):
@@ -79,17 +75,12 @@ class LSTMmath(nn.Module):
 
     def forward(self, question):
         embeds = self.word_embeddings(question)
-        #print("embeds: {0}".format(embeds))
         lstm_out, self.hidden = self.lstm(
             embeds.view(len(question), 1, -1), self.hidden)
         lstm_out = lstm_out.view(len(question), self.hidden_dim)
-        print("lstm_out1: {0}".format(lstm_out))
         forAverage = autograd.Variable(torch.FloatTensor(1, len(question)).fill_(1./len(question)))
         lstm_out = torch.mm(forAverage, lstm_out)
-        print("lstm_out2: {0}".format(lstm_out))
-        #tag_space = self.hidden2tag(lstm_out.view(len(question), -1))
         tag_space = self.hidden2tag(lstm_out.view(1, -1))
-        #print("tag_space: {0}".format(tag_space))
         #we don't need it to be specific to each word. need 1x100 matrix
         tag_scores = F.log_softmax(tag_space)
         return tag_scores
@@ -117,8 +108,6 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
         # Step 2. Get our inputs ready for the network, that is, turn them into
         # Variables of word indices.
         sentence_in = prepare_question(sentence.split(), word_to_ix)
-        #targets = prepare_question(tags, tag_to_ix)
-        #print("tagcrazy: {0}".format(torch.LongTensor(tags)))
         targets = autograd.Variable(torch.LongTensor([tags]))
 
         # Step 3. Run our forward pass.
@@ -137,12 +126,3 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
 #     #print(tag_scores)
 #     value, index = torch.max(tag_scores, 1)
 #     print(index)
-
-
-# The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
-#  for word i. The predicted tag is the maximum scoring tag.
-# Here, we can see the predicted sequence below is 0 1 2 0 1
-# since 0 is index of the maximum value of row 1,
-# 1 is the index of maximum value of row 2, etc.
-# Which is DET NOUN VERB DET NOUN, the correct sequence!
-#print(tag_scores)
