@@ -24,7 +24,7 @@ def createWordDictionary(data):
     """
 
     :param data: a list of problems
-    :return: a dictionary of all the words in the questions
+    :return: a dictionary of all the words in the questions. Each word is assigned a unique index.
     """
 
     word_to_ix = {}
@@ -33,16 +33,6 @@ def createWordDictionary(data):
             if word not in word_to_ix:
                 word_to_ix[word] = len(word_to_ix)
     return word_to_ix
-
-# def createTagDictionary(data):
-#     tag_to_idx = {}
-#     for question, answers in data:
-#         for i, answer in enumerate(answers):
-#             if answer not in tag_to_idx:
-#                 tag_to_idx[answer] = i
-#     return tag_to_idx
-
-#tag_to_ix = createTagDictionary(trainingData)
 
 tag_to_ix = {i: i for i in range(100)}
 word_to_ix = createWordDictionary(trainingData)
