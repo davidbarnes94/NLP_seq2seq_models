@@ -8,7 +8,7 @@ torch.manual_seed(1)
 EMBEDDING_DIM = 6
 HIDDEN_DIM = 6
 
-#Training data with questions, multiple choice answers and the correct answer
+#Training data with questions and the correct answers
 trainingData = [('Add 3 and 5', 8), ('Multiply 9 and 2', 18), ('Divide 9 by 3', 3),
                 ('John had 3 mangoes then Mary gave him 4 more. How much does he have now?', 7),
                 ('Sum 50 and 5', 55), ('Adam went to the store with 10 dollars then bought an apple for 6 dollars.'
