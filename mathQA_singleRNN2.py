@@ -9,11 +9,8 @@ torch.manual_seed(1)
 EMBEDDING_DIM = 6
 HIDDEN_DIM = 6
 
-#trainingData = QA.generateMultiplication(1000) + QA.generateDivision(1000) + QA.generateSubtraction(1000) + QA.generateAddition(1000)
-#testData = QA.generateMultiplication(50) + QA.generateDivision(50) + QA.generateSubtraction(50) + QA.generateAddition(50)
 
-
-#Training data with questions, multiple choice answers and the correct answer
+#Training data with questions and the correct answers
 trainingData = [('Add 3 and 5', 8), ('Multiply 9 and 2', 18), ('Divide 9 by 3', 3),
                 ('John had 3 mangoes then Mary gave him 4 more. How much does he have now?', 7),
                 ('Sum 50 and 5', 55), ('Adam went to the store with 10 dollars then bought an apple for 6 dollars.'
@@ -28,7 +25,7 @@ def createWordDictionary(data):
     """
 
     :param data: a list of problems
-    :return: a dictionary of all the words in the questions
+    :return: a dictionary of all the words in the questions. Each word is assigned a unique index.
     """
 
     word_to_ix = {}
@@ -37,16 +34,6 @@ def createWordDictionary(data):
             if word not in word_to_ix:
                 word_to_ix[word] = len(word_to_ix)
     return word_to_ix
-
-# def createTagDictionary(data):
-#     tag_to_idx = {}
-#     for question, answers in data:
-#         for i, answer in enumerate(answers):
-#             if answer not in tag_to_idx:
-#                 tag_to_idx[answer] = i
-#     return tag_to_idx
-
-#tag_to_ix = createTagDictionary(trainingData)
 
 tag_to_ix = {i: i for i in range(101)}
 word_to_ix = createWordDictionary(trainingData)
@@ -62,12 +49,6 @@ def prepare_question(seq, to_ix):
     idxs = [to_ix[w] for w in seq]
     tensor = torch.LongTensor(idxs)
     return autograd.Variable(tensor)
-
-
-
-
-#print(prepare_question(trainingData[0][0].split(), word_to_ix))
-#print(createTagDictionary(trainingData))
 
 class LSTMmath(nn.Module):
 
