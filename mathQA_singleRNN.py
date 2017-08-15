@@ -8,6 +8,13 @@ torch.manual_seed(1)
 EMBEDDING_DIM = 6
 HIDDEN_DIM = 6
 
+'''
+An RNN processes the question. The answer for each question is between 0 and 99.
+In order to predict the answer, we take the average of all the final outputs and input the average vector
+into a linear layer. We do log softmax over the output from the linear layer. The predicted answer is the one with
+the highest log softmax value
+'''
+
 #Training data with questions and the correct answers
 trainingData = [('Add 3 and 5', 8), ('Multiply 9 and 2', 18), ('Divide 9 by 3', 3),
                 ('John had 3 mangoes then Mary gave him 4 more. How much does he have now?', 7),
@@ -89,14 +96,8 @@ model = LSTMmath(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
 
-# See what the scores are before training
-# Note that element i,j of the output is the score for tag j for word i.
-inputs = prepare_question(trainingData[0][0].split(), word_to_ix)
-tag_scores = model(inputs)
-#print(tag_scores)
-
-for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
-    for sentence, tags in trainingData:
+for epoch in range(300):
+    for sentence, tag in trainingData:
         # Step 1. Remember that Pytorch accumulates gradients.
         # We need to clear them out before each instance
         model.zero_grad()
@@ -108,7 +109,7 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
         # Step 2. Get our inputs ready for the network, that is, turn them into
         # Variables of word indices.
         sentence_in = prepare_question(sentence.split(), word_to_ix)
-        targets = autograd.Variable(torch.LongTensor([tags]))
+        targets = autograd.Variable(torch.LongTensor([tag]))
 
         # Step 3. Run our forward pass.
         tag_scores = model(sentence_in)
@@ -120,9 +121,9 @@ for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is t
         optimizer.step()
 
 # See what the scores are after training
-# for i in range(len(trainingData)):
-#     inputs = prepare_question(trainingData[i][0].split(), word_to_ix)
-#     tag_scores = model(inputs)
-#     #print(tag_scores)
-#     value, index = torch.max(tag_scores, 1)
-#     print(index)
+
+for i in range(len(trainingData)):
+    inputs = prepare_question(trainingData[i][0].split(), word_to_ix)
+    tag_scores = model(inputs)
+    value, index = torch.max(tag_scores, 1)
+    print("question: {0}, correct answer: {1}, predicted answer: {2}".format(trainingData[i][0], trainingData[i][1], index.data.numpy()[0][0]))
