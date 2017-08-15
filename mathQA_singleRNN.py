@@ -15,6 +15,11 @@ trainingData = [('Add 3 and 5', 8), ('Multiply 9 and 2', 18), ('Divide 9 by 3', 
                                        'How much does he know have?', 4), ('Subtract 16 from 30', 14), ('Multiply 2 and 30', 60),
                 ('Add 25 and 39', 64)]
 
+testData = [('If Alex had 50 dollars in his account before he deposited 30 dollars. How much does he now have?', 80),
+            ('Add 9 and 3', 12), ('Subtract 20 from 64', 34), ('Divide 360 by 4', 90), ('Multiply 12 and 3', 36),
+            ('What is 2 by 2 by 2?', 8)]
+
+
 def createWordDictionary(data):
     """
 
