@@ -131,6 +131,7 @@ def process_answer(answer, answer_model, question_final_hidden, is_training):
     :param answer: raw form of an answer choice for a question
     :param answer_model: instance of AnswerRNN
     :param question_final_hidden: last hidden state from the question RNN
+    :param is_training: True if training data is used
     :return: tensor of the final output for each word in the answer
     '''
 
