@@ -12,7 +12,7 @@ HIDDEN_DIM = 6
 An RNN processes the question. The answer for each question is between 0 and 99.
 In order to predict the answer, we take the average of all the final outputs and input the average vector
 into a linear layer. We do log softmax over the output from the linear layer. The predicted answer is the one with
-the highest log softmax value
+the highest log softmax value.
 '''
 
 #Training data with questions and the correct answers
