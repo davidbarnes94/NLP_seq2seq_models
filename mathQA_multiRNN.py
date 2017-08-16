@@ -8,6 +8,12 @@ import numpy as np
 use_cuda = torch.cuda.is_available()
 HIDDEN_DIM = 256
 
+'''
+An RNN processes the question. Based on the structure of the dataset, there is a certain number of multiple choice responses for a question.
+If there are 4 choices, there'll be 4 answer RNNs in the model. Each choice is processed by a separate answer RNN. The initial hidden state of each answer RNN
+is the final hidden state of the question RNN. The method for predicting the correct answer is explained in the function is_accurate()
+'''
+
 #Training data with questions, multiple choice answers and the index of correct answer
 trainingData = [('Add 3 and 5', [8, 2.3, 9, 14], 0), ('Multiply 9 and 2', [2, 9, 18, 1], 2), ('Divide 9 by 3', [9, 3, 20.3, 6], 1),
                 ('John had 3 mangoes then Mary gave him 4 more. How much does he have now?', ["John now has 3 mangoes", "John now has 7 mangoes", "John now has 3 mangoes", "John now has 94 mangoes"], 1),
