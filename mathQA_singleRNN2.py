@@ -77,21 +77,15 @@ class LSTMmath(nn.Module):
     def forward(self, question):
         #embed n words each in dimension m to form an nxm matrix
         embeds = self.word_embeddings(question)
-        #print("embeds: {0}".format(embeds))
-        #print("e {0}".format(embeds.view(len(question), 1, -1)))
-        #convert the embedding to a 3D tensor - one for each word
         print("self.hidden: {0}".format(self.hidden))
         lstm_out, self.hidden = self.lstm(
             embeds.view(len(question), 1, -1), self.hidden) #lstm_out is a 3D tensor. output from the last layer for each word
         print("lstm_out: {0}".format(lstm_out))
-        #print("lstm_out: {0}".format(F.relu(lstm_out)))
-        #print("lstm_out[0]: {0}".format(lstm_out[0]))
         lstm_out = lstm_out.view(len(question), self.hidden_dim) #convert lstm_out to nxm matrix
         print("lstm_out: {0}".format(lstm_out))
         print("hidden: {0}".format(self.hidden))
         print("lstm_out: {0}".format(lstm_out[3]))
         tag_space = self.hidden2tag(lstm_out[len(question)-1].view(1, -1))
-        #print("tag_space: {0}".format(tag_space))
         #we don't need it to be specific to each word. need 1x100 matrix
         tag_scores = F.log_softmax(tag_space)
         return tag_scores
@@ -100,14 +94,8 @@ model = LSTMmath(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
 
-# See what the scores are before training
-# Note that element i,j of the output is the score for tag j for word i.
-#inputs = prepare_question(trainingData[0][0].split(), word_to_ix)
-#tag_scores = model(inputs)
-#print(tag_scores)
-
 for epoch in range(1):  # again, normally you would NOT do 300 epochs, it is toy data
-    for sentence, tags in trainingData:
+    for sentence, tag in trainingData:
         # Step 1. Remember that Pytorch accumulates gradients.
         # We need to clear them out before each instance
         model.zero_grad()
@@ -119,8 +107,7 @@ for epoch in range(1):  # again, normally you would NOT do 300 epochs, it is toy
         # Step 2. Get our inputs ready for the network, that is, turn them into
         # Variables of word indices.
         sentence_in = prepare_question(sentence.split(), word_to_ix)
-        targets = autograd.Variable(torch.LongTensor([tags]))
-        #print("targets: {0}".format(targets))
+        targets = autograd.Variable(torch.LongTensor([tag]))
 
         # Step 3. Run our forward pass.
         tag_scores = model(sentence_in)
@@ -155,12 +142,3 @@ for i in range(len(testData)):
 print("total correct: {0}".format(sumAccuracyTest))
 accuracyTest = sumAccuracyTest.numpy()/float(len(testData))
 print("percentage test accuracy: {0}".format(accuracyTest))
-
-
-# The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
-#  for word i. The predicted tag is the maximum scoring tag.
-# Here, we can see the predicted sequence below is 0 1 2 0 1
-# since 0 is index of the maximum value of row 1,
-# 1 is the index of maximum value of row 2, etc.
-# Which is DET NOUN VERB DET NOUN, the correct sequence!
-#print(tag_scores)
