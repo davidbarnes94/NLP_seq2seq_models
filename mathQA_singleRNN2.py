@@ -9,6 +9,12 @@ torch.manual_seed(1)
 EMBEDDING_DIM = 6
 HIDDEN_DIM = 6
 
+'''
+An RNN processes the question. The answer for each question is between 0 and 99.
+In order to predict the answer, we take the final output of the last cell and input this output vector
+into a linear layer. We do log softmax over the output from the linear layer. The predicted answer is the one with
+the highest log softmax value.
+'''
 
 #Training data with questions and the correct answers
 trainingData = [('Add 3 and 5', 8), ('Multiply 9 and 2', 18), ('Divide 9 by 3', 3),
@@ -77,14 +83,9 @@ class LSTMmath(nn.Module):
     def forward(self, question):
         #embed n words each in dimension m to form an nxm matrix
         embeds = self.word_embeddings(question)
-        print("self.hidden: {0}".format(self.hidden))
         lstm_out, self.hidden = self.lstm(
             embeds.view(len(question), 1, -1), self.hidden) #lstm_out is a 3D tensor. output from the last layer for each word
-        print("lstm_out: {0}".format(lstm_out))
         lstm_out = lstm_out.view(len(question), self.hidden_dim) #convert lstm_out to nxm matrix
-        print("lstm_out: {0}".format(lstm_out))
-        print("hidden: {0}".format(self.hidden))
-        print("lstm_out: {0}".format(lstm_out[3]))
         tag_space = self.hidden2tag(lstm_out[len(question)-1].view(1, -1))
         #we don't need it to be specific to each word. need 1x100 matrix
         tag_scores = F.log_softmax(tag_space)
