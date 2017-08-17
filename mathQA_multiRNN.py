@@ -4,9 +4,11 @@ import torch.nn as nn
 import torch.optim as optim
 import re
 import numpy as np
+from torch.nn.modules.module import _addindent
 
 use_cuda = torch.cuda.is_available()
 HIDDEN_DIM = 256
+MAX_LENGTH = 25 #maximum length of a question
 
 '''
 An RNN processes the question. Based on the structure of the dataset, there is a certain number of multiple choice responses for a question.
@@ -27,7 +29,6 @@ testData = [('If Alex had 50 dollars in his account before he deposited 30 dolla
             ('What is 2 by 2 by 2?', ['The result is 6', 'The result is 4', 'The result is 8', 'The result is 222'], 2)]
 
 NUM_ANSWERS = len(trainingData[0][1])
-output2tag = nn.Linear(HIDDEN_DIM, 2)
 loss_function = nn.NLLLoss()
 
 def is_number(s):
@@ -110,7 +111,7 @@ def process_question(question, question_model, is_training):
     question_hidden = question_model.initHidden()
 
     question_outputs = autograd.Variable(
-        torch.zeros(len(question), question_model.hidden_size))  # store the final output for each word
+        torch.zeros(MAX_LENGTH, question_model.hidden_size))  # store the final output for each word
     question_outputs = question_outputs.cuda() if use_cuda else question_outputs
 
     if is_training:
@@ -205,6 +206,7 @@ class AnswerRNN(nn.Module):
             super(AnswerRNN, self).__init__()
             self.n_layers = n_layers  # number of hidden layers in the LSTM
             self.hidden_size = hidden_size  # the dimension of a hidden vector
+            self.output2tag = nn.Linear(HIDDEN_DIM, 2)
 
             self.embedding = nn.Embedding(input_size, hidden_size)  # to create an embedding for each word
             self.gru = nn.GRU(hidden_size, hidden_size)  # the hidden layer
@@ -262,10 +264,10 @@ def create_models():
     for i in range(NUM_ANSWERS):
         answer_models.append(AnswerRNN(len(train_answer_word_to_ix), HIDDEN_DIM))
 
-    question_optimizer = optim.SGD(questionModel.parameters(), lr=0.1)
+    question_optimizer = optim.SGD(questionModel.parameters(), lr=1000000000)
     answer_optimizers = []
     for i in range(NUM_ANSWERS):
-        answer_optimizers.append(optim.SGD(answer_models[i].parameters(), lr=0.1))
+        answer_optimizers.append(optim.SGD(answer_models[i].parameters(), lr=10000000))
 
     return questionModel, question_optimizer, answer_models, answer_optimizers
 
@@ -313,6 +315,31 @@ def train(training_data, n_epochs = 500):
             for optimizer in answer_optimizers:
                 optimizer.step()
 
+        param_list = list(question_model.parameters())
+
+        #print("param[0]: {0}".format(param_list[0]))
+        #print("param[0]: {0}".format(param_list[0].grad))
+        print("param[1]: {0}".format(param_list[1].grad))
+        #print("param[2]: {0}".format(param_list[2].grad))
+        #print("param[3]: {0}".format(param_list[3].grad))
+        #print("param[4]: {0}".format(param_list[4].grad))
+
+
+
+
+            # print("param[1]".format(param_list[1].grad.data.norm(2)))
+            # print("param[2]".format(param_list[2].grad.data.norm(2)))
+            # print("param[3]".format(param_list[3].grad.data.norm(2)))
+
+
+
+        #print("answer_model0 parameters: {0}".format())
+        #print("question_model parameters: {0}".format(list(question_model.parameters())))
+        #print("answer_model1 parameters: {0}".format(list(answer_models[1].parameters())))
+        #print("answer_model2 parameters: {0}".format(list(answer_models[2].parameters())))
+        #print("answer_model3 parameters: {0}".format(list(answer_models[3].parameters())))
+
+
 
     return question_model, answer_models
 
@@ -340,11 +367,11 @@ def test(question_model, answer_models, data, is_training=False):
         predicted_tags, true_tags = predict_answer(ans_index, answer_outputs)
         prediction_accuracy, predicted_index = is_accurate(predicted_tags, ans_index)
         sumAccuracy += int(prediction_accuracy == True)
-        try:
-            print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
-        except:
-            print("question: {0}, correct answer: {1}, Model doesn't think any of the answers are correct".format(question, answers[ans_index]))
-
+        # try:
+        #     print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
+        # except:
+        #     print("question: {0}, correct answer: {1}, Model doesn't think any of the answers are correct".format(question, answers[ans_index]))
+        #
 
     return "The model correctly predicted {0} out of {1} questions".format(sumAccuracy, len(data))
 
@@ -355,7 +382,7 @@ def test(question_model, answer_models, data, is_training=False):
 #print(process_answer(trainingData[0][1][0], answer0Model, questionModel.initHidden()))
 #print(process_answer(trainingData[3][1][0], answer0Model, questionModel.initHidden()))
 #print(predict_answer(0, autograd.Variable(torch.randn(2, 10))))
-question_model, answer_models = train(trainingData)
+question_model, answer_models = train(trainingData, 4)
 accuracy1 = test(question_model, answer_models, trainingData, True)
 print(accuracy1)
 accuracy2 = test(question_model, answer_models, testData)
