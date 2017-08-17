@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import re
 import numpy as np
-from torch.nn.modules.module import _addindent
+import torch.nn.functional as F
 
 use_cuda = torch.cuda.is_available()
 HIDDEN_DIM = 256
@@ -217,6 +217,7 @@ class AnswerRNN(nn.Module):
             embedded = self.embedding(input).view(1, 1, -1)  # reshape 1x1xhidden_size tensor
             output = embedded
             for i in range(self.n_layers):
+                output = F.relu(output)
                 output, hidden = self.gru(output, hidden)
             return output, hidden
 
