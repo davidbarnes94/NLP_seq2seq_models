@@ -252,6 +252,25 @@ def create_models():
 
     return questionModel, question_optimizer, answer_models, answer_optimizers
 
+def train_one_AnswerRNN(answer_model, answer_optimizer, question_model, question_optimizer, question, choice, true_tag):
+    # set all gradients to zero
+    question_model.zero_grad()
+    answer_model.zero_grad()
+    # feed the question through the question RNN
+    question_outputs, last_hidden = process_question(question, question_model, True)
+
+    # RNN outputs a softmax over 0 and 1
+    # 0 - it is not the correct answer
+    # 1 - it is the correct answer
+    predicted_tags = process_answer(choice, answer_models[j], last_hidden, True)
+
+    loss = loss_function(predicted_tags, autograd.Variable(torch.LongTensor([true_tag])))
+    loss.backward()
+
+    question_optimizer.step()
+    answer_optimizer.step()
+
+    return question_model, answer_model
 
 
 def train(training_data, n_epochs = 500):
@@ -269,44 +288,12 @@ def train(training_data, n_epochs = 500):
     #true_tags = autograd.Variable(torch.zeros(NUM_ANSWERS, 1))
 
     for epoch in range(n_epochs):
-        for question, choices, correct_choice_index in training_data:
-            #set all gradients to zero
-            question_model.zero_grad()
-            for model in answer_models:
-                model.zero_grad()
+        for j in range(NUM_ANSWERS):
+            for question, choices, correct_choice_index in training_data:
+                true_tag = 1 if correct_choice_index == j else 0
+                question_model, answer_models[j] = train_one_AnswerRNN(answer_models[j], answer_optimizers[j],
+                                                                       question_model, question_optimizer, question, choices[j], true_tag)
 
-            #feed the question through the question RNN
-            question_outputs, last_hidden = process_question(question, question_model, True)
-
-            #feed each answer through its respective RNN
-            for i, choice in enumerate(choices):
-                predicted_tags = process_answer(choice, answer_models[i], last_hidden, True)
-                true_tag = 1 if correct_choice_index == i else 0
-
-                loss_functions[i](predicted_tags, autograd.Variable(torch.LongTensor([true_tag]))).backward()
-
-
-            #each answer RNN outputs a softmax over 0 and 1
-            #0 - it is not the correct answer
-            #1 - it is the correct answer
-            #print("predicted_tags: {0}".format(predicted_tags))
-            #print("true_tags: {0}".format(true_tags.long()))
-
-            #loss = loss_function(predicted_tags, true_tags.long())
-            #loss.backward()
-
-            #question_optimizer.step()
-            for optimizer in answer_optimizers:
-                optimizer.step()
-
-        #param_list = list(question_model.parameters())
-
-        #print("param[0]: {0}".format(param_list[0]))
-        #print("param[0]: {0}".format(param_list[0].grad))
-        #print("param[1]: {0}".format(param_list[1].grad))
-        #print("param[2]: {0}".format(param_list[2].grad))
-        #print("param[3]: {0}".format(param_list[3].grad))
-        #print("param[4]: {0}".format(param_list[4].grad))
 
 
     return question_model, answer_models
