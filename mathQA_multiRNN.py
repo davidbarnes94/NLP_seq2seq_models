@@ -166,7 +166,7 @@ def predict_answer(ans_index, answer_outputs):
     tag_space = np.zeros((NUM_ANSWERS, 2))
 
     for i in range(len(answer_outputs)):
-        true_tags[i] = 1 if ans_index == i else 0
+
         tag_space[i] = output2tag(answer_outputs[i].view(1, -1)).data.numpy()
 
     true_tags = autograd.Variable(torch.LongTensor(true_tags.astype(int)))
@@ -283,7 +283,8 @@ def train(training_data, n_epochs = 500):
     question_model, question_optimizer, answer_models, answer_optimizers = create_models()
 
     #to store the final ouput from each answer RNN
-    answer_outputs = autograd.Variable(torch.zeros(len(answer_models), HIDDEN_DIM))
+    answer_softmaxes = autograd.Variable(torch.zeros(len(answer_models), HIDDEN_DIM))
+    true_tags = autograd.Variable(torch.zeros(NUM_ANSWERS, 1))
 
     for epoch in range(n_epochs):
         for question, choices, correct_choice_index in training_data:
@@ -297,15 +298,13 @@ def train(training_data, n_epochs = 500):
 
             #feed each answer through its respective RNN
             for i, choice in enumerate(choices):
-                if is_number(choice):
-                    answer_outputs[i] = process_answer(choice, answer_models[i], last_hidden, True)
-                else:
-                    answer_outputs[i] = process_answer(choice, answer_models[i], last_hidden, True)[-1].view(1, -1)
+                answer_softmaxes[i] = process_answer(choice, answer_models[i], last_hidden, True)
+                true_tags[i] = 1 if correct_choice_index == i else 0
 
             #each answer RNN outputs a softmax over 0 and 1
             #0 - it is not the correct answer
             #1 - it is the correct answer
-            predicted_tags, true_tags = predict_answer(correct_choice_index, answer_outputs)
+            predicted_tags = predict_answer(correct_choice_index, answer_outputs)
 
             loss = loss_function(predicted_tags, true_tags)
             loss.backward()
