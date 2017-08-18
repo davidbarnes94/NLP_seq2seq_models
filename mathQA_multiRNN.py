@@ -29,7 +29,7 @@ testData = [('If Alex had 50 dollars in his account before he deposited 30 dolla
             ('What is 2 by 2 by 2?', ['The result is 6', 'The result is 4', 'The result is 8', 'The result is 222'], 2)]
 
 NUM_ANSWERS = len(trainingData[0][1])
-loss_function = nn.NLLLoss()
+
 
 def is_number(s):
     '''
@@ -126,33 +126,6 @@ def process_question(question, question_model, is_training):
 
     return question_outputs, question_hidden
 
-def process_answer(answer, answer_model, question_final_hidden, is_training):
-    '''
-
-    :param answer: raw form of an answer choice for a question
-    :param answer_model: instance of AnswerRNN
-    :param question_final_hidden: last hidden state from the question RNN
-    :param is_training: True if training data is used
-    :return: tensor of the final output for each word in the answer
-    '''
-
-    if is_number(answer) and is_training:
-        answer_in = prepare_data(answer, train_answer_word_to_ix)
-    elif is_number(answer) and not is_training:
-        answer_in = prepare_data(answer, test_answer_word_to_ix)
-    elif not is_number(answer) and not is_training:
-        answer_in = prepare_data(answer.split(), test_answer_word_to_ix)
-    else:
-        answer_in = prepare_data(answer.split(), train_answer_word_to_ix)
-
-    answer_hidden = question_final_hidden #last hidden state from the question becomes the initial hidden state of the answer model
-
-    #enter one word at a time into the model to obtain hidden and output states
-    for word_index in range(len(answer_in)):
-        softmax_layer, answer_hidden = answer_model(answer_in[word_index], answer_hidden)
-
-    return softmax_layer.data
-
 
 class QuestionRNN(nn.Module):
     def __init__(self, input_size, hidden_size, n_layers=1):
@@ -207,6 +180,34 @@ class AnswerRNN(nn.Module):
             else:
                 return result
 
+def process_answer(answer, answer_model, question_final_hidden, is_training):
+    '''
+
+    :param answer: raw form of an answer choice for a question
+    :param answer_model: instance of AnswerRNN
+    :param question_final_hidden: last hidden state from the question RNN
+    :param is_training: True if training data is used
+    :return: tensor of the final output for each word in the answer
+    '''
+
+    if is_number(answer) and is_training:
+        answer_in = prepare_data(answer, train_answer_word_to_ix)
+    elif is_number(answer) and not is_training:
+        answer_in = prepare_data(answer, test_answer_word_to_ix)
+    elif not is_number(answer) and not is_training:
+        answer_in = prepare_data(answer.split(), test_answer_word_to_ix)
+    else:
+        answer_in = prepare_data(answer.split(), train_answer_word_to_ix)
+
+    answer_hidden = question_final_hidden #last hidden state from the question becomes the initial hidden state of the answer model
+
+    #enter one word at a time into the model to obtain hidden and output states
+    for word_index in range(len(answer_in)):
+        softmax_layer, answer_hidden = answer_model(answer_in[word_index], answer_hidden)
+
+    return softmax_layer
+
+
 def is_accurate(predicted_tags, ans_index):
     '''
 
@@ -237,18 +238,21 @@ def create_models():
     :return: question_optimizer: updates parameters during training
     :return: answer_models: list of all the instances of AnswerRNN
     :return: answer_optimizers: list of the optimizers for each answer_model
+    :return: loss_functions: list of loss functions for each Answer RNN
     '''
     questionModel = QuestionRNN(len(train_question_word_to_ix), HIDDEN_DIM)
     answer_models = []
+    loss_functions = []
     for i in range(NUM_ANSWERS):
         answer_models.append(AnswerRNN(len(train_answer_word_to_ix), HIDDEN_DIM))
+        loss_functions.append(nn.NLLLoss())
 
     question_optimizer = optim.SGD(questionModel.parameters(), lr=1000000000)
     answer_optimizers = []
     for i in range(NUM_ANSWERS):
         answer_optimizers.append(optim.SGD(answer_models[i].parameters(), lr=10000000))
 
-    return questionModel, question_optimizer, answer_models, answer_optimizers
+    return questionModel, question_optimizer, answer_models, answer_optimizers, loss_functions
 
 
 
@@ -260,10 +264,10 @@ def train(training_data, n_epochs = 500):
     :return: answer_models: trained answer RNNs
     '''
 
-    question_model, question_optimizer, answer_models, answer_optimizers = create_models()
+    question_model, question_optimizer, answer_models, answer_optimizers, loss_functions = create_models()
 
     #to store the final ouput from each answer RNN
-    predicted_tags = autograd.Variable(torch.zeros(len(answer_models), HIDDEN_DIM))
+    predicted_tags = autograd.Variable(torch.zeros(len(answer_models), 2), requires_grad=True)
     true_tags = autograd.Variable(torch.zeros(NUM_ANSWERS, 1))
 
     for epoch in range(n_epochs):
@@ -284,8 +288,10 @@ def train(training_data, n_epochs = 500):
             #each answer RNN outputs a softmax over 0 and 1
             #0 - it is not the correct answer
             #1 - it is the correct answer
+            print("predicted_tags: {0}".format(predicted_tags))
+            print("true_tags: {0}".format(true_tags.long()))
 
-            loss = loss_function(predicted_tags, true_tags)
+            loss = loss_function(predicted_tags, true_tags.long())
             loss.backward()
 
             question_optimizer.step()
@@ -305,36 +311,36 @@ def train(training_data, n_epochs = 500):
     return question_model, answer_models
 
 
-def test(question_model, answer_models, data, is_training=False):
-    '''
-
-    :param question_model: trained RNN for processing the question
-    :param answer_models: trained answer RNN's for processing the answers
-    :param data: data for testing the model
-    :param is_training: True if the training data is used
-    :return:
-    '''
-    sumAccuracy = 0
-    answer_outputs = autograd.Variable(torch.zeros(len(answer_models), HIDDEN_DIM))
-
-    for question, answers, ans_index in data:
-        question_in, last_hidden = process_question(question, question_model, is_training)
-        for i, answer in enumerate(answers):
-            if is_number(answer):
-                answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)
-            else:
-                answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)[-1].view(1, -1)
-
-        predicted_tags, true_tags = predict_answer(ans_index, answer_outputs)
-        prediction_accuracy, predicted_index = is_accurate(predicted_tags, ans_index)
-        sumAccuracy += int(prediction_accuracy == True)
-        # try:
-        #     print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
-        # except:
-        #     print("question: {0}, correct answer: {1}, Model doesn't think any of the answers are correct".format(question, answers[ans_index]))
-        #
-
-    return "The model correctly predicted {0} out of {1} questions".format(sumAccuracy, len(data))
+# def test(question_model, answer_models, data, is_training=False):
+#     '''
+#
+#     :param question_model: trained RNN for processing the question
+#     :param answer_models: trained answer RNN's for processing the answers
+#     :param data: data for testing the model
+#     :param is_training: True if the training data is used
+#     :return:
+#     '''
+#     sumAccuracy = 0
+#     answer_outputs = autograd.Variable(torch.zeros(len(answer_models), HIDDEN_DIM))
+#
+#     for question, answers, ans_index in data:
+#         question_in, last_hidden = process_question(question, question_model, is_training)
+#         for i, answer in enumerate(answers):
+#             if is_number(answer):
+#                 answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)
+#             else:
+#                 answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)[-1].view(1, -1)
+#
+#         predicted_tags, true_tags = predict_answer(ans_index, answer_outputs)
+#         prediction_accuracy, predicted_index = is_accurate(predicted_tags, ans_index)
+#         sumAccuracy += int(prediction_accuracy == True)
+#         # try:
+#         #     print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
+#         # except:
+#         #     print("question: {0}, correct answer: {1}, Model doesn't think any of the answers are correct".format(question, answers[ans_index]))
+#         #
+#
+#     return "The model correctly predicted {0} out of {1} questions".format(sumAccuracy, len(data))
 
 
 ##FUNCTION TESTING
@@ -344,10 +350,10 @@ def test(question_model, answer_models, data, is_training=False):
 #print(process_answer(trainingData[3][1][0], answer0Model, questionModel.initHidden()))
 #print(predict_answer(0, autograd.Variable(torch.randn(2, 10))))
 question_model, answer_models = train(trainingData, 4)
-accuracy1 = test(question_model, answer_models, trainingData, True)
-print(accuracy1)
-accuracy2 = test(question_model, answer_models, testData)
-print(accuracy2)
+#accuracy1 = test(question_model, answer_models, trainingData, True)
+#print(accuracy1)
+#accuracy2 = test(question_model, answer_models, testData)
+#print(accuracy2)
 #print(is_number("s"))
 #print(is_number("4"))
 #print(is_number(3))
