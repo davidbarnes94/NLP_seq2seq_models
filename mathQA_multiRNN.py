@@ -145,15 +145,13 @@ def process_answer(answer, answer_model, question_final_hidden, is_training):
     else:
         answer_in = prepare_data(answer.split(), train_answer_word_to_ix)
 
-    answerOutputs = autograd.Variable(torch.zeros(len(answer_in), answer_model.hidden_size))
     answer_hidden = question_final_hidden #last hidden state from the question becomes the initial hidden state of the answer model
 
     #enter one word at a time into the model to obtain hidden and output states
     for word_index in range(len(answer_in)):
-        answer_output, answer_hidden = answer_model(answer_in[word_index], answer_hidden)
-        answerOutputs[word_index] = answer_output[0][0]
+        softmax_layer, answer_hidden = answer_model(answer_in[word_index], answer_hidden)
 
-    return answerOutputs
+    return softmax_layer
 
 def predict_answer(ans_index, answer_outputs):
     '''
@@ -173,7 +171,6 @@ def predict_answer(ans_index, answer_outputs):
 
     true_tags = autograd.Variable(torch.LongTensor(true_tags.astype(int)))
     tag_space = autograd.Variable(torch.FloatTensor(tag_space), requires_grad=True)
-    m = nn.LogSoftmax()
     predicted_tag_scores = m(tag_space)
     return predicted_tag_scores, true_tags
 
@@ -207,7 +204,7 @@ class AnswerRNN(nn.Module):
             self.n_layers = n_layers  # number of hidden layers in the LSTM
             self.hidden_size = hidden_size  # the dimension of a hidden vector
             self.output2tag = nn.Linear(HIDDEN_DIM, 2)
-
+            self.softmax = nn.LogSoftmax()
             self.embedding = nn.Embedding(input_size, hidden_size)  # to create an embedding for each word
             self.gru = nn.GRU(hidden_size, hidden_size)  # the hidden layer
 
@@ -219,7 +216,8 @@ class AnswerRNN(nn.Module):
             for i in range(self.n_layers):
                 output = F.relu(output)
                 output, hidden = self.gru(output, hidden)
-            return output, hidden
+            softmax_layer = self.softmax(self.output2tag(output[0]))
+            return softmax_layer, hidden
 
 
         def initHidden(self):
@@ -324,22 +322,6 @@ def train(training_data, n_epochs = 500):
         #print("param[2]: {0}".format(param_list[2].grad))
         #print("param[3]: {0}".format(param_list[3].grad))
         #print("param[4]: {0}".format(param_list[4].grad))
-
-
-
-
-            # print("param[1]".format(param_list[1].grad.data.norm(2)))
-            # print("param[2]".format(param_list[2].grad.data.norm(2)))
-            # print("param[3]".format(param_list[3].grad.data.norm(2)))
-
-
-
-        #print("answer_model0 parameters: {0}".format())
-        #print("question_model parameters: {0}".format(list(question_model.parameters())))
-        #print("answer_model1 parameters: {0}".format(list(answer_models[1].parameters())))
-        #print("answer_model2 parameters: {0}".format(list(answer_models[2].parameters())))
-        #print("answer_model3 parameters: {0}".format(list(answer_models[3].parameters())))
-
 
 
     return question_model, answer_models
