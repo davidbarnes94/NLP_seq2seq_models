@@ -151,7 +151,7 @@ def process_answer(answer, answer_model, question_final_hidden, is_training):
     for word_index in range(len(answer_in)):
         softmax_layer, answer_hidden = answer_model(answer_in[word_index], answer_hidden)
 
-    return softmax_layer
+    return softmax_layer.data
 
 def predict_answer(ans_index, answer_outputs):
     '''
