@@ -29,6 +29,7 @@ testData = [('If Alex had 50 dollars in his account before he deposited 30 dolla
             ('What is 2 by 2 by 2?', ['The result is 6', 'The result is 4', 'The result is 8', 'The result is 222'], 2)]
 
 NUM_ANSWERS = len(trainingData[0][1])
+loss_function = nn.NLLLoss()
 
 
 def is_number(s):
@@ -238,21 +239,18 @@ def create_models():
     :return: question_optimizer: updates parameters during training
     :return: answer_models: list of all the instances of AnswerRNN
     :return: answer_optimizers: list of the optimizers for each answer_model
-    :return: loss_functions: list of loss functions for each Answer RNN
     '''
     questionModel = QuestionRNN(len(train_question_word_to_ix), HIDDEN_DIM)
     answer_models = []
-    loss_functions = []
     for i in range(NUM_ANSWERS):
         answer_models.append(AnswerRNN(len(train_answer_word_to_ix), HIDDEN_DIM))
-        loss_functions.append(nn.NLLLoss())
 
     question_optimizer = optim.SGD(questionModel.parameters(), lr=1000000000)
     answer_optimizers = []
     for i in range(NUM_ANSWERS):
         answer_optimizers.append(optim.SGD(answer_models[i].parameters(), lr=10000000))
 
-    return questionModel, question_optimizer, answer_models, answer_optimizers, loss_functions
+    return questionModel, question_optimizer, answer_models, answer_optimizers
 
 
 
@@ -264,11 +262,11 @@ def train(training_data, n_epochs = 500):
     :return: answer_models: trained answer RNNs
     '''
 
-    question_model, question_optimizer, answer_models, answer_optimizers, loss_functions = create_models()
+    question_model, question_optimizer, answer_models, answer_optimizers = create_models()
 
     #to store the final ouput from each answer RNN
-    predicted_tags = autograd.Variable(torch.zeros(len(answer_models), 2), requires_grad=True)
-    true_tags = autograd.Variable(torch.zeros(NUM_ANSWERS, 1))
+    #predicted_tags = autograd.Variable(torch.zeros(len(answer_models), 2), requires_grad=True)
+    #true_tags = autograd.Variable(torch.zeros(NUM_ANSWERS, 1))
 
     for epoch in range(n_epochs):
         for question, choices, correct_choice_index in training_data:
@@ -282,19 +280,22 @@ def train(training_data, n_epochs = 500):
 
             #feed each answer through its respective RNN
             for i, choice in enumerate(choices):
-                predicted_tags[i] = process_answer(choice, answer_models[i], last_hidden, True)
-                true_tags[i] = 1 if correct_choice_index == i else 0
+                predicted_tags = process_answer(choice, answer_models[i], last_hidden, True)
+                true_tag = 1 if correct_choice_index == i else 0
+
+                loss_functions[i](predicted_tags, autograd.Variable(torch.LongTensor([true_tag]))).backward()
+
 
             #each answer RNN outputs a softmax over 0 and 1
             #0 - it is not the correct answer
             #1 - it is the correct answer
-            print("predicted_tags: {0}".format(predicted_tags))
-            print("true_tags: {0}".format(true_tags.long()))
+            #print("predicted_tags: {0}".format(predicted_tags))
+            #print("true_tags: {0}".format(true_tags.long()))
 
-            loss = loss_function(predicted_tags, true_tags.long())
-            loss.backward()
+            #loss = loss_function(predicted_tags, true_tags.long())
+            #loss.backward()
 
-            question_optimizer.step()
+            #question_optimizer.step()
             for optimizer in answer_optimizers:
                 optimizer.step()
 
