@@ -153,26 +153,6 @@ def process_answer(answer, answer_model, question_final_hidden, is_training):
 
     return softmax_layer.data
 
-def predict_answer(ans_index, answer_outputs):
-    '''
-
-    :param ans_index: the list index of the correct answer
-    :param answer_outputs: A Variable that stores the final output of the last RNN cell for each AnswerRNN
-    :return: predicted_tag_scores: log softmax over 0 and 1 for each answer RNN
-    :return: true_tags: a Variable with the true tag for each RNN. For example, an answer RNN that processed
-    an incorrect answer has a true tag of 1 and vice-versa.
-    '''
-    true_tags = np.zeros(NUM_ANSWERS)
-    tag_space = np.zeros((NUM_ANSWERS, 2))
-
-    for i in range(len(answer_outputs)):
-
-        tag_space[i] = output2tag(answer_outputs[i].view(1, -1)).data.numpy()
-
-    true_tags = autograd.Variable(torch.LongTensor(true_tags.astype(int)))
-    tag_space = autograd.Variable(torch.FloatTensor(tag_space), requires_grad=True)
-    predicted_tag_scores = m(tag_space)
-    return predicted_tag_scores, true_tags
 
 class QuestionRNN(nn.Module):
     def __init__(self, input_size, hidden_size, n_layers=1):
