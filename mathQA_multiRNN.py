@@ -5,6 +5,7 @@ import torch.optim as optim
 import re
 import numpy as np
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 use_cuda = torch.cuda.is_available()
 HIDDEN_DIM = 256
@@ -126,6 +127,19 @@ def process_question(question, question_model, is_training):
         question_outputs[word_index] = question_output[0][0]
 
     return question_outputs, question_hidden
+
+
+def plot_gradient(gradient_norms, num_time_steps):
+    '''
+
+    :param gradient_norms: list of the norm of the gradient for each time step
+    :param num_time_steps: total time steps
+    :return:
+    '''
+    norms = np.array(gradient_norms)
+    time_steps = np.arange(num_time_steps)
+    plt.plot(time_steps, norms)
+    plt.show()
 
 
 class QuestionRNN(nn.Module):
@@ -258,22 +272,25 @@ def train_one_AnswerRNN(answer_model, answer_optimizer, question_model, question
     answer_model.zero_grad()
     # feed the question through the question RNN
     question_outputs, last_hidden = process_question(question, question_model, True)
+    print("question params1: {0}".format(list(question_model.parameters())[2].grad.data))
+
 
     # RNN outputs a softmax over 0 and 1
     # 0 - it is not the correct answer
     # 1 - it is the correct answer
-    predicted_tags = process_answer(choice, answer_models[j], last_hidden, True)
+    predicted_tags = process_answer(choice, answer_model, last_hidden, True)
 
     loss = loss_function(predicted_tags, autograd.Variable(torch.LongTensor([true_tag])))
     loss.backward()
 
     question_optimizer.step()
     answer_optimizer.step()
+    #print("question params2: {0}".format(list(question_model.parameters())[0].grad))
 
     return question_model, answer_model
 
 
-def train(training_data, n_epochs = 500):
+def train(training_data, n_epochs=500):
     '''
     :param training_data: list of 3 element tuples. tuple example: (question, [choice1, choice2,..], index of correct choice)
     :param n_epochs: number of epochs
@@ -283,16 +300,15 @@ def train(training_data, n_epochs = 500):
 
     question_model, question_optimizer, answer_models, answer_optimizers = create_models()
 
-    #to store the final ouput from each answer RNN
-    #predicted_tags = autograd.Variable(torch.zeros(len(answer_models), 2), requires_grad=True)
-    #true_tags = autograd.Variable(torch.zeros(NUM_ANSWERS, 1))
-
     for epoch in range(n_epochs):
+        print("epoch: {0}".format(epoch))
         for j in range(NUM_ANSWERS):
+            print("j: {0}".format(j))
             for question, choices, correct_choice_index in training_data:
                 true_tag = 1 if correct_choice_index == j else 0
                 question_model, answer_models[j] = train_one_AnswerRNN(answer_models[j], answer_optimizers[j],
                                                                        question_model, question_optimizer, question, choices[j], true_tag)
+
 
 
 
@@ -325,7 +341,7 @@ def train(training_data, n_epochs = 500):
 #         # try:
 #         #     print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
 #         # except:
-#         #     print("question: {0}, correct answer: {1}, Model doesn't think any of the answers are correct".format(question, answers[ans_index]))
+#         #     print("question: {0}, correct answer: {1}, Model doesn't think any of the answers is correct".format(question, answers[ans_index]))
 #         #
 #
 #     return "The model correctly predicted {0} out of {1} questions".format(sumAccuracy, len(data))
