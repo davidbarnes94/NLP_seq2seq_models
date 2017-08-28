@@ -261,10 +261,10 @@ def create_models():
     for i in range(NUM_ANSWERS):
         answer_models.append(AnswerRNN(len(train_answer_word_to_ix), HIDDEN_DIM))
 
-    question_optimizer = optim.SGD(questionModel.parameters(), lr=1000000000)
+    question_optimizer = optim.SGD(questionModel.parameters(), lr=0.1)
     answer_optimizers = []
     for i in range(NUM_ANSWERS):
-        answer_optimizers.append(optim.SGD(answer_models[i].parameters(), lr=10000000))
+        answer_optimizers.append(optim.SGD(answer_models[i].parameters(), lr=0.1))
 
     return questionModel, question_optimizer, answer_models, answer_optimizers
 
@@ -313,7 +313,6 @@ def train(training_data, n_epochs=500):
     question_model, question_optimizer, answer_models, answer_optimizers = create_models()
 
     for j in range(NUM_ANSWERS):
-        print("j: {0}".format(j))
         gradient_norms = []
         gradient_norms_question = []
         params = list(answer_models[j].parameters())
@@ -327,8 +326,8 @@ def train(training_data, n_epochs=500):
                 gradient_norms_question.append(params_question[0].grad.data.norm(2))
 
         model_name = 'answer model ' + str(j)
-        plot_gradient(gradient_norms, len(trainingData)*n_epochs, model_name)
-    plot_gradient(gradient_norms_question, len(trainingData)*n_epochs, 'question_model')
+        #plot_gradient(gradient_norms, len(trainingData)*n_epochs, model_name)
+    #plot_gradient(gradient_norms_question, len(trainingData)*n_epochs, 'question_model')
 
 
     return question_model, answer_models
@@ -344,24 +343,19 @@ def test(question_model, answer_models, data, is_training=False):
     :return:
     '''
     sumAccuracy = 0
-    answer_outputs = autograd.Variable(torch.zeros(len(answer_models), HIDDEN_DIM))
-
+    predicted_tags = autograd.Variable(torch.zeros(NUM_ANSWERS, 2))
     for question, answers, ans_index in data:
         question_in, last_hidden = process_question(question, question_model, is_training)
         for i, answer in enumerate(answers):
-            if is_number(answer):
-                answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)
-            else:
-                answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)[-1].view(1, -1)
+            predicted_tags[i] = process_answer(answer, answer_models[i], last_hidden, is_training)
 
-        predicted_tags, true_tags = predict_answer(ans_index, answer_outputs)
         prediction_accuracy, predicted_index = is_accurate(predicted_tags, ans_index)
         sumAccuracy += int(prediction_accuracy == True)
-        # try:
-        #     print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
-        # except:
-        #     print("question: {0}, correct answer: {1}, Model doesn't think any of the answers is correct".format(question, answers[ans_index]))
-        #
+        try:
+            print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
+        except:
+            print("question: {0}, correct answer: {1}, Model doesn't think any of the answers is correct".format(question, answers[ans_index]))
+
 
     return "The model correctly predicted {0} out of {1} questions".format(sumAccuracy, len(data))
 
@@ -375,8 +369,8 @@ def test(question_model, answer_models, data, is_training=False):
 question_model, answer_models = train(trainingData, 4)
 accuracy1 = test(question_model, answer_models, trainingData, True)
 print(accuracy1)
-#accuracy2 = test(question_model, answer_models, testData)
-#print(accuracy2)
+accuracy2 = test(question_model, answer_models, testData)
+print(accuracy2)
 #print(is_number("s"))
 #print(is_number("4"))
 #print(is_number(3))
