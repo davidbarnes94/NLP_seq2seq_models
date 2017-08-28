@@ -129,15 +129,17 @@ def process_question(question, question_model, is_training):
     return question_outputs, question_hidden
 
 
-def plot_gradient(gradient_norms, num_time_steps):
+def plot_gradient(gradient_norms, num_time_steps, model_name):
     '''
 
     :param gradient_norms: list of the norm of the gradient for each time step
     :param num_time_steps: total time steps
+    :param model_name: name of RNN
     :return:
     '''
     norms = np.array(gradient_norms)
     time_steps = np.arange(num_time_steps)
+    plt.title(model_name)
     plt.plot(time_steps, norms)
     plt.show()
 
@@ -266,13 +268,13 @@ def create_models():
 
     return questionModel, question_optimizer, answer_models, answer_optimizers
 
+
 def train_one_AnswerRNN(answer_model, answer_optimizer, question_model, question_optimizer, question, choice, true_tag):
     # set all gradients to zero
     question_model.zero_grad()
     answer_model.zero_grad()
     # feed the question through the question RNN
     question_outputs, last_hidden = process_question(question, question_model, True)
-    print("question params1: {0}".format(list(question_model.parameters())[2].grad.data))
 
 
     # RNN outputs a softmax over 0 and 1
@@ -285,7 +287,6 @@ def train_one_AnswerRNN(answer_model, answer_optimizer, question_model, question
 
     question_optimizer.step()
     answer_optimizer.step()
-    #print("question params2: {0}".format(list(question_model.parameters())[0].grad))
 
     return question_model, answer_model
 
@@ -300,14 +301,23 @@ def train(training_data, n_epochs=500):
 
     question_model, question_optimizer, answer_models, answer_optimizers = create_models()
 
-    #for epoch in range(n_epochs):
-    #   print("epoch: {0}".format(epoch))
-    #for j in range(NUM_ANSWERS):
-    #   print("j: {0}".format(j))
-    for question, choices, correct_choice_index in training_data:
-        true_tag = 1 if correct_choice_index == 0 else 0
-        question_model, answer_models[0] = train_one_AnswerRNN(answer_models[0], answer_optimizers[j],
-                                                               question_model, question_optimizer, question, choices[j], true_tag)
+    for j in range(NUM_ANSWERS):
+        print("j: {0}".format(j))
+        gradient_norms = []
+        gradient_norms_question = []
+        params = list(answer_models[j].parameters())
+        params_question = list(question_model.parameters())
+        for _ in range(n_epochs):
+            for question, choices, correct_choice_index in training_data:
+                true_tag = 1 if correct_choice_index == j else 0
+                question_model, answer_models[j] = train_one_AnswerRNN(answer_models[j], answer_optimizers[j],
+                                                                       question_model, question_optimizer, question, choices[j], true_tag)
+                gradient_norms.append(params[0].grad.data.norm(2))
+                gradient_norms_question.append(params_question[0].grad.data.norm(2))
+
+        model_name = 'answer model ' + str(j)
+        plot_gradient(gradient_norms, len(trainingData)*n_epochs, model_name)
+    plot_gradient(gradient_norms_question, len(trainingData)*n_epochs, 'question_model')
 
 
 
