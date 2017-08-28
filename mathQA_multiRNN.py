@@ -270,6 +270,17 @@ def create_models():
 
 
 def train_one_AnswerRNN(answer_model, answer_optimizer, question_model, question_optimizer, question, choice, true_tag):
+    '''
+
+    :param answer_model: instance of AnswerRNN
+    :param answer_optimizer: updates the parameters of answer_model during training
+    :param question_model: instance of QuestionRNN
+    :param question_optimizer: updates the parameters of question_model during training
+    :param question: raw string form of question
+    :param choice: one of the multiple choice responses
+    :param true_tag: 1 if choice is correct answer, 0 otherwise
+    :return:
+    '''
     # set all gradients to zero
     question_model.zero_grad()
     answer_model.zero_grad()
@@ -320,41 +331,39 @@ def train(training_data, n_epochs=500):
     plot_gradient(gradient_norms_question, len(trainingData)*n_epochs, 'question_model')
 
 
-
-
     return question_model, answer_models
 
 
-# def test(question_model, answer_models, data, is_training=False):
-#     '''
-#
-#     :param question_model: trained RNN for processing the question
-#     :param answer_models: trained answer RNN's for processing the answers
-#     :param data: data for testing the model
-#     :param is_training: True if the training data is used
-#     :return:
-#     '''
-#     sumAccuracy = 0
-#     answer_outputs = autograd.Variable(torch.zeros(len(answer_models), HIDDEN_DIM))
-#
-#     for question, answers, ans_index in data:
-#         question_in, last_hidden = process_question(question, question_model, is_training)
-#         for i, answer in enumerate(answers):
-#             if is_number(answer):
-#                 answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)
-#             else:
-#                 answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)[-1].view(1, -1)
-#
-#         predicted_tags, true_tags = predict_answer(ans_index, answer_outputs)
-#         prediction_accuracy, predicted_index = is_accurate(predicted_tags, ans_index)
-#         sumAccuracy += int(prediction_accuracy == True)
-#         # try:
-#         #     print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
-#         # except:
-#         #     print("question: {0}, correct answer: {1}, Model doesn't think any of the answers is correct".format(question, answers[ans_index]))
-#         #
-#
-#     return "The model correctly predicted {0} out of {1} questions".format(sumAccuracy, len(data))
+def test(question_model, answer_models, data, is_training=False):
+    '''
+
+    :param question_model: trained RNN for processing the question
+    :param answer_models: trained answer RNN's for processing the answers
+    :param data: data for testing the model
+    :param is_training: True if the training data is used
+    :return:
+    '''
+    sumAccuracy = 0
+    answer_outputs = autograd.Variable(torch.zeros(len(answer_models), HIDDEN_DIM))
+
+    for question, answers, ans_index in data:
+        question_in, last_hidden = process_question(question, question_model, is_training)
+        for i, answer in enumerate(answers):
+            if is_number(answer):
+                answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)
+            else:
+                answer_outputs[i] = process_answer(answer, answer_models[i], last_hidden, is_training)[-1].view(1, -1)
+
+        predicted_tags, true_tags = predict_answer(ans_index, answer_outputs)
+        prediction_accuracy, predicted_index = is_accurate(predicted_tags, ans_index)
+        sumAccuracy += int(prediction_accuracy == True)
+        # try:
+        #     print("question: {0}, correct answer: {1}, predicted_answer: {2}".format(question, answers[ans_index], answers[predicted_index]))
+        # except:
+        #     print("question: {0}, correct answer: {1}, Model doesn't think any of the answers is correct".format(question, answers[ans_index]))
+        #
+
+    return "The model correctly predicted {0} out of {1} questions".format(sumAccuracy, len(data))
 
 
 ##FUNCTION TESTING
@@ -364,8 +373,8 @@ def train(training_data, n_epochs=500):
 #print(process_answer(trainingData[3][1][0], answer0Model, questionModel.initHidden()))
 #print(predict_answer(0, autograd.Variable(torch.randn(2, 10))))
 question_model, answer_models = train(trainingData, 4)
-#accuracy1 = test(question_model, answer_models, trainingData, True)
-#print(accuracy1)
+accuracy1 = test(question_model, answer_models, trainingData, True)
+print(accuracy1)
 #accuracy2 = test(question_model, answer_models, testData)
 #print(accuracy2)
 #print(is_number("s"))
