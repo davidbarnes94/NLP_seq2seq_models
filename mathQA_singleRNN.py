@@ -3,6 +3,8 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import matplotlib.pyplot as plt
+import numpy as np
 
 torch.manual_seed(1)
 EMBEDDING_DIM = 6
@@ -56,6 +58,12 @@ def prepare_question(seq, to_ix):
     tensor = torch.LongTensor(idxs)
     return autograd.Variable(tensor)
 
+def plot_gradient(gradient_norms, num_time_steps):
+    norms = np.array(gradient_norms)
+    time_steps = np.arange(num_time_steps)
+    plt.plot(time_steps, norms)
+    plt.show()
+
 class LSTMmath(nn.Module):
 
     def __init__(self, embedding_dim, hidden_dim, vocab_size, tagset_size):
@@ -96,6 +104,8 @@ model = LSTMmath(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
 loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
 
+gradient_norms = []
+num_time_steps = 300*len(trainingData)
 for epoch in range(300):
     for sentence, tag in trainingData:
         # Step 1. Remember that Pytorch accumulates gradients.
@@ -119,6 +129,10 @@ for epoch in range(300):
         loss = loss_function(tag_scores, targets)
         loss.backward()
         optimizer.step()
+        params = list(model.parameters())
+        gradient_norms.append(params[0].grad.data.norm(2))
+
+plot_gradient(gradient_norms, num_time_steps)
 
 # See what the scores are after training
 
