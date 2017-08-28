@@ -204,7 +204,7 @@ def process_answer(answer, answer_model, question_final_hidden, is_training):
     :param answer_model: instance of AnswerRNN
     :param question_final_hidden: last hidden state from the question RNN
     :param is_training: True if training data is used
-    :return: tensor of the final output for each word in the answer
+    :return: softmax over 0 and 1 from the final output of the RNN
     '''
 
     if is_number(answer) and is_training:
