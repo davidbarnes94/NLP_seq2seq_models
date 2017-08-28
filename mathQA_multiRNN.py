@@ -300,14 +300,14 @@ def train(training_data, n_epochs=500):
 
     question_model, question_optimizer, answer_models, answer_optimizers = create_models()
 
-    for epoch in range(n_epochs):
-        print("epoch: {0}".format(epoch))
-        for j in range(NUM_ANSWERS):
-            print("j: {0}".format(j))
-            for question, choices, correct_choice_index in training_data:
-                true_tag = 1 if correct_choice_index == j else 0
-                question_model, answer_models[j] = train_one_AnswerRNN(answer_models[j], answer_optimizers[j],
-                                                                       question_model, question_optimizer, question, choices[j], true_tag)
+    #for epoch in range(n_epochs):
+    #   print("epoch: {0}".format(epoch))
+    #for j in range(NUM_ANSWERS):
+    #   print("j: {0}".format(j))
+    for question, choices, correct_choice_index in training_data:
+        true_tag = 1 if correct_choice_index == 0 else 0
+        question_model, answer_models[0] = train_one_AnswerRNN(answer_models[0], answer_optimizers[j],
+                                                               question_model, question_optimizer, question, choices[j], true_tag)
 
 
 
