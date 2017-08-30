@@ -192,6 +192,8 @@ class AnswerRNN(nn.Module):
 		super(AnswerRNN, self).__init__()
 		self.n_layers = n_layers  # Number of hidden layers in the LSTM
 		self.hidden_size = hidden_size  # The dimension of a hidden vector
+		self.output2tag = nn.Linear(HIDDEN_DIM, 2)
+		self.softmax = nn.LogSoftmax()
 
 		self.embedding = nn.Embedding(input_size, hidden_size)  # to create an embedding for each word
 		self.gru = nn.GRU(hidden_size, hidden_size)  # the hidden layer
@@ -202,7 +204,9 @@ class AnswerRNN(nn.Module):
 		output = embedded
 		for i in range(self.n_layers):
 			output, hidden = self.gru(output, hidden)
-		return output, hidden
+		softmax_layer = self.softmax(self.output2tag(output[0]))
+
+		return softmax_layer, hidden
 
 	def initHidden(self):
 		result = autograd.Variable(torch.zeros(1, 1, self.hidden_size))
@@ -393,7 +397,6 @@ def predict_answer(ans_index, answer_outputs):
 
 	true_tags = autograd.Variable(torch.LongTensor(true_tags.astype(int)))
 	tag_space = autograd.Variable(torch.FloatTensor(tag_space), requires_grad=True)
-	m = nn.LogSoftmax()
 	predicted_tag_scores = m(tag_space)
 	return predicted_tag_scores, true_tags
 
@@ -541,8 +544,6 @@ def load_pickle_object(pickle_file):
 if __name__ == '__main__':
 	HIDDEN_DIM = 256
 
-	output2tag = nn.Linear(HIDDEN_DIM, 2)
-	
 	posts_file ="data_accepted/posts.txt"
 	training_file = "data_accepted/training_without_comments.txt"
 
