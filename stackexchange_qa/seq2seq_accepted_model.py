@@ -298,7 +298,6 @@ def process_answer(answer, answer_model, question_final_hidden, is_training):
 	else:
 		answer_in = prepare_answer_data(answer, test_answer_vocab)
 
-	answer_outputs = autograd.Variable(torch.zeros(len(answer_in), answer_model.hidden_size))
 	answer_hidden = question_final_hidden # Last hidden state from the question becomes the initial hidden state of the answer model
 
 	# Enter one word at a time into the model to obtain hidden and output states
@@ -349,13 +348,13 @@ def train(training_data, loss_function, epochs = 100):
 	params_question = list(question_model.parameters())
 	for epoch in range(epochs):
 		for data in training_data:
-			#print("a")
+
 			print_progress(e+1, len(training_data)*epochs)
 			e += 1
-			#print("b")
+
 			question = (data[0], data[1], data[2])
 			answers = data[3]
-			#print("c")
+
 
 			# Fix when there are no answers
 			if len(answers) == 0:
@@ -370,7 +369,7 @@ def train(training_data, loss_function, epochs = 100):
 
 			# Feed the question through the question RNN
 			question_outputs, last_hidden = process_question(question, question_model, True)
-			#print("d")
+
 
 			# Feed each answer through the answer RNN
 			for i, answer in enumerate(answers):
@@ -378,23 +377,24 @@ def train(training_data, loss_function, epochs = 100):
 				#answer_outputs[i] = process_answer(answer, answer_model, last_hidden, True)[-1].view(1, -1)
 				predicted_tags[i] = process_answer(answer, answer_model, last_hidden, True)
 
-			#print("e")
+
 			# Each answer RNN outputs a softmax over 0 and 1
 			# 0 - incorrect answer
 			# 1 - correct answer
 			#predicted_tags, true_tags = predict_answer(len(answers)-1, answer_outputs)
 			true_tags = autograd.Variable(torch.zeros(len(answers)))
 			true_tags[0] = 1
-			#print("f")
+
 
 			loss = loss_function(predicted_tags, true_tags.long())
 			loss.backward()
-			#print("g")
+
 
 			question_optimizer.step()
 			answer_optimizer.step()
 			gradient_norms.append(params[0].grad.data.norm(2))
 			gradient_norms_question.append(params_question[0].grad.data.norm(2))
+
 
 	plot_gradient(gradient_norms, len(training_data)*epochs, "answer model")
 	plot_gradient(gradient_norms_question, len(training_data)*epochs, 'question_model')
@@ -420,13 +420,15 @@ def predict_accepted_answer_index(predicted_tags):
 	- otherwise, no answer is chosen
 	"""
 	predicted_tags = predicted_tags.data.numpy()
-	predicted_index = -1 # set chosen response to a number that doesn't correspond to any of the choices (0, 1, 2, 3)
+	max_ones = [-100] * len(predicted_tags)
 	for i, tag_scores in enumerate(predicted_tags):
-		# TODO: tag_scores[1] < max_one ??
-		# if tag_scores[1] > tag_scores[0]:
-		if (predicted_index == -1) or (tag_scores[1] < predicted_tags[predicted_index][1]):
-			predicted_index = i
-	return predicted_index
+		if tag_scores[1] > tag_scores[0]:
+			max_ones[i] = tag_scores[1]
+
+	max_one = max_ones.index(max(max_ones))
+
+
+	return max_one
 
 def test(question_model, answer_model, test_data, is_training=False):
 	"""
@@ -584,7 +586,7 @@ if __name__ == '__main__':
 	test_answer_vocab = createAnswerVocab(test_data)
 
 	if not loading_model:
-		question_model, answer_model = train(training_data, loss_function, epochs=1)
+		question_model, answer_model = train(training_data, loss_function, 2)
 		save_models(question_model, answer_model)
 	else:
 		question_model, answer_model = load_models()
