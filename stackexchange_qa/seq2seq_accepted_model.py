@@ -7,6 +7,7 @@ import numpy as np
 from random import shuffle
 import sys
 import pickle
+import matplotlib.pyplot as plt
 
 use_cuda = torch.cuda.is_available()
 
@@ -215,6 +216,19 @@ class AnswerRNN(nn.Module):
 		else:
 			return result
 
+def plot_gradient(gradient_norms, num_time_steps, model_name):
+    '''
+    :param gradient_norms: list of the norm of the gradient for each time step
+    :param num_time_steps: total time steps
+    :param model_name: name of RNN
+    :return:
+    '''
+    norms = np.array(gradient_norms)
+    time_steps = np.arange(num_time_steps)
+    plt.title(model_name)
+    plt.plot(time_steps, norms)
+    plt.show()
+
 def prepare_question_data(question, vocab):
 	""" Prepares the question to be fed into the model by converting it into a PyTorch Variable.
 	Parameters:
@@ -329,13 +343,19 @@ def train(training_data, loss_function, epochs = 100):
 	print("Training model for %d epochs." % epochs)
 
 	e = 0
+	gradient_norms = []
+	gradient_norms_question = []
+	params = list(answer_model.parameters())
+	params_question = list(question_model.parameters())
 	for epoch in range(epochs):
 		for data in training_data:
+			#print("a")
 			print_progress(e+1, len(training_data)*epochs)
 			e += 1
-
+			#print("b")
 			question = (data[0], data[1], data[2])
 			answers = data[3]
+			#print("c")
 
 			# Fix when there are no answers
 			if len(answers) == 0:
@@ -350,6 +370,7 @@ def train(training_data, loss_function, epochs = 100):
 
 			# Feed the question through the question RNN
 			question_outputs, last_hidden = process_question(question, question_model, True)
+			#print("d")
 
 			# Feed each answer through the answer RNN
 			for i, answer in enumerate(answers):
@@ -357,19 +378,26 @@ def train(training_data, loss_function, epochs = 100):
 				#answer_outputs[i] = process_answer(answer, answer_model, last_hidden, True)[-1].view(1, -1)
 				predicted_tags[i] = process_answer(answer, answer_model, last_hidden, True)
 
-
+			#print("e")
 			# Each answer RNN outputs a softmax over 0 and 1
 			# 0 - incorrect answer
 			# 1 - correct answer
 			#predicted_tags, true_tags = predict_answer(len(answers)-1, answer_outputs)
 			true_tags = autograd.Variable(torch.zeros(len(answers)))
 			true_tags[0] = 1
+			#print("f")
 
 			loss = loss_function(predicted_tags, true_tags.long())
 			loss.backward()
+			#print("g")
 
 			question_optimizer.step()
 			answer_optimizer.step()
+			gradient_norms.append(params[0].grad.data.norm(2))
+			gradient_norms_question.append(params_question[0].grad.data.norm(2))
+
+	plot_gradient(gradient_norms, len(training_data)*epochs, "answer model")
+	plot_gradient(gradient_norms_question, len(training_data)*epochs, 'question_model')
 
 	print("\nFinished training model.")
 	return question_model, answer_model
@@ -420,7 +448,7 @@ def test(question_model, answer_model, test_data, is_training=False):
 	for qi, data in enumerate(test_data):
 		question = (data[0], data[1], data[2])
 		answers = data[3]
-		answer_outputs = autograd.Variable(torch.zeros(len(answers), HIDDEN_DIM))
+		predicted_tags = autograd.Variable(torch.zeros(len(answers), 2))
 
 		# Fix when there are no answers
 		if len(answers) == 0:
@@ -430,19 +458,18 @@ def test(question_model, answer_model, test_data, is_training=False):
 		question_in, last_hidden = process_question(question, question_model, is_training)
 		for i, answer in enumerate(answers):
 			# TODO: ???
-			answer_outputs[i] = process_answer(answer, answer_model, last_hidden, is_training)[-1].view(1, -1)
+			predicted_tags[i] = process_answer(answer, answer_model, last_hidden, is_training)
 
 		#predicted_tags, true_tags = predict_answer(len(answers)-1, answer_outputs)
-		predicted_tags, true_tags = predict_answer(0, answer_outputs)
 
 		predicted_index = predict_accepted_answer_index(predicted_tags)
 		#num_correct += int(predicted_index == len(answers)-1)
 		num_correct += int(predicted_index == 0)
 
 		if not predicted_index == -1:
-			print("Question: {0}, Correct answer index: {1}, Predicted_answer: {2}".format(qi, len(answers)-1, predicted_index))
+			print("Question: {0}, Correct answer index: {1}, Predicted_answer: {2}".format(qi, 0, predicted_index))
 		else:
-			print("Question: {0}, Correct answer index: {1}, Model doesn't think any of the answers are accepted".format(qi, len(answers)-1))
+			print("Question: {0}, Correct answer index: {1}, Model doesn't think any of the answers are accepted".format(qi, 0))
 
 	return "The model correctly predicted {0} out of {1} questions".format(num_correct, len(test_data))
 
