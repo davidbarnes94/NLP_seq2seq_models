@@ -362,8 +362,7 @@ def train(training_data, loss_function, epochs = 100):
 			# 0 - incorrect answer
 			# 1 - correct answer
 			#predicted_tags, true_tags = predict_answer(len(answers)-1, answer_outputs)
-			predicted_tags, true_tags = predict_answer(0, answer_outputs)
-
+			true_tags = autograd.Variable(torch.zeros(len(answers)))
 
 			loss = loss_function(predicted_tags, true_tags)
 			loss.backward()
@@ -377,28 +376,6 @@ def train(training_data, loss_function, epochs = 100):
 # TODO: Check if having index=0 as accepted answer affects training
 # with index=0, the performance is basically the same
 
-def predict_answer(ans_index, answer_outputs):
-	""" 
-	Parameters:
-		ans_index			the list index of the correct answer
-		answer_outputs		tensor storing the final outputs of the AnswerRNN
-	Returns:
-		predicted_tag_scores	log softmax over 0 and 1 for each answer RNN
-		true_tags				tensor containing the true tag for each RNN. For example, an answer RNN
-								that processed an incorrect answer has a true tag of 1 and vice-versa.
-	"""
-	true_tags = np.zeros(len(answer_outputs))
-	tag_space = np.zeros((len(answer_outputs), 2))
-
-	# Run the answer outputs through a linear neural net
-	for i in range(len(answer_outputs)):
-		true_tags[i] = int(ans_index == i)
-		tag_space[i] = output2tag(answer_outputs[i].view(1, -1)).data.numpy()
-
-	true_tags = autograd.Variable(torch.LongTensor(true_tags.astype(int)))
-	tag_space = autograd.Variable(torch.FloatTensor(tag_space), requires_grad=True)
-	predicted_tag_scores = m(tag_space)
-	return predicted_tag_scores, true_tags
 
 def predict_accepted_answer_index(predicted_tags):
 	"""
