@@ -239,10 +239,12 @@ def is_accurate(predicted_tags, ans_index):
     '''
 
     predicted_tags = predicted_tags.data.numpy()
-    max_one = 6 #set chosen response to a number that doesn't correspond to any of the choices (0, 1, 2, 3)
+    max_ones = [-100]*len(predicted_tags)
     for i, tag_scores in enumerate(predicted_tags):
-        if (tag_scores[1] > tag_scores[0]) and (tag_scores[1] < max_one):
-            max_one = i
+        if tag_scores[1] > tag_scores[0]:
+            max_ones[i] = tag_scores[1]
+
+    max_one = max_ones.index(max(max_ones))
     if max_one == ans_index:
         return True, max_one
     else:
@@ -311,6 +313,7 @@ def train(training_data, n_epochs=500):
     '''
 
     question_model, question_optimizer, answer_models, answer_optimizers = create_models()
+    print("Training model for %d epochs." % n_epochs)
 
     for j in range(NUM_ANSWERS):
         gradient_norms = []
@@ -342,6 +345,11 @@ def test(question_model, answer_models, data, is_training=False):
     :param is_training: True if the training data is used
     :return:
     '''
+    if is_training:
+        print("\nTesting model on training set.")
+    else:
+        print("\nTesting model on test set.")
+
     sumAccuracy = 0
     predicted_tags = autograd.Variable(torch.zeros(NUM_ANSWERS, 2))
     for question, answers, ans_index in data:
@@ -366,7 +374,7 @@ def test(question_model, answer_models, data, is_training=False):
 #print(process_answer(trainingData[0][1][0], answer0Model, questionModel.initHidden()))
 #print(process_answer(trainingData[3][1][0], answer0Model, questionModel.initHidden()))
 #print(predict_answer(0, autograd.Variable(torch.randn(2, 10))))
-question_model, answer_models = train(trainingData, 4)
+question_model, answer_models = train(trainingData, 10)
 accuracy1 = test(question_model, answer_models, trainingData, True)
 print(accuracy1)
 accuracy2 = test(question_model, answer_models, testData)
