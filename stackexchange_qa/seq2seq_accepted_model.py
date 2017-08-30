@@ -346,7 +346,7 @@ def train(training_data, loss_function, epochs = 100):
 			answer_model.zero_grad()
 
 			# To store the final ouput from the answer RNN
-			answer_outputs = autograd.Variable(torch.zeros(len(answers), HIDDEN_DIM))
+			predicted_tags = autograd.Variable(torch.zeros(len(answers), 2))
 
 			# Feed the question through the question RNN
 			question_outputs, last_hidden = process_question(question, question_model, True)
@@ -355,7 +355,7 @@ def train(training_data, loss_function, epochs = 100):
 			for i, answer in enumerate(answers):
 				# TODO: ???
 				#answer_outputs[i] = process_answer(answer, answer_model, last_hidden, True)[-1].view(1, -1)
-				predicted_tags = process_answer(answer, answer_model, last_hidden, True)
+				predicted_tags[i] = process_answer(answer, answer_model, last_hidden, True)
 
 
 			# Each answer RNN outputs a softmax over 0 and 1
@@ -363,8 +363,9 @@ def train(training_data, loss_function, epochs = 100):
 			# 1 - correct answer
 			#predicted_tags, true_tags = predict_answer(len(answers)-1, answer_outputs)
 			true_tags = autograd.Variable(torch.zeros(len(answers)))
+			true_tags[0] = 1
 
-			loss = loss_function(predicted_tags, true_tags)
+			loss = loss_function(predicted_tags, true_tags.long())
 			loss.backward()
 
 			question_optimizer.step()
