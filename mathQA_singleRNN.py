@@ -59,6 +59,12 @@ def prepare_question(seq, to_ix):
     return autograd.Variable(tensor)
 
 def plot_gradient(gradient_norms, num_time_steps):
+    '''
+
+    :param gradient_norms: list of the norm of the gradient for each time step
+    :param num_time_steps: total time steps
+    :return:
+    '''
     norms = np.array(gradient_norms)
     time_steps = np.arange(num_time_steps)
     plt.plot(time_steps, norms)
